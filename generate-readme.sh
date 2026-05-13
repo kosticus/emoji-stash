@@ -22,9 +22,8 @@ title_case() {
     echo "$1" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1'
 }
 
-render_table() {
+render_grid() {
     local dir="$1"
-    local prefix="$2"
     local files=()
 
     while IFS= read -r file; do
@@ -35,15 +34,21 @@ render_table() {
     [ ${#files[@]} -eq 0 ] && return 1
 
     readme+="
-| | Name |
-|---|---|"
+<table><tr>"
+    local col=0
+    local cols=6
     for file in "${files[@]}"; do
         name=$(basename "$file")
         label="${name%.*}"
+        if [[ $col -ge $cols ]]; then
+            readme+="</tr><tr>"
+            col=0
+        fi
         readme+="
-| <img src=\"$file\" width=\"48\"> | \`$label\` |"
+<td align=\"center\" bgcolor=\"#2b2b3d\"><img src=\"$file\" width=\"64\"><br><sub>$label</sub></td>"
+        col=$((col + 1))
     done
-    readme+="
+    readme+="</tr></table>
 "
     return 0
 }
@@ -59,7 +64,7 @@ if [[ -d "originals" ]]; then
         readme+="
 ## Uncategorized
 "
-        render_table "originals" "originals"
+        render_grid "originals"
     fi
 
     # Subdirectories in originals/
@@ -71,7 +76,7 @@ if [[ -d "originals" ]]; then
         readme+="
 ## $heading
 "
-        render_table "$dir" "originals/$dirname" || readme="${readme%## $heading
+        render_grid "$dir" || readme="${readme%## $heading
 }"
     done < <(find originals -mindepth 1 -maxdepth 1 -type d -not -name '.*' | sort -f)
 fi
