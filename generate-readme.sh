@@ -33,22 +33,55 @@ render_grid() {
 
     [ ${#files[@]} -eq 0 ] && return 1
 
-    readme+="
-<table><tr>"
-    local col=0
     local cols=6
+    local col=0
+
+    # Build header row
+    local header="|"
+    local separator="|"
+    for (( i=0; i<cols; i++ )); do
+        header+=" |"
+        separator+=":---:|"
+    done
+
+    local current_header="$header"
+    local current_sep="$separator"
+    local current_row="|"
+    local need_table_start=true
+
     for file in "${files[@]}"; do
         name=$(basename "$file")
         label="${name%.*}"
+
+        if $need_table_start; then
+            readme+="
+${current_header}
+${current_sep}"
+            need_table_start=false
+        fi
+
+        current_row+=" ![${label}](${file}) |"
+        col=$((col + 1))
+
         if [[ $col -ge $cols ]]; then
-            readme+="</tr><tr>"
+            readme+="
+${current_row}"
+            current_row="|"
             col=0
         fi
-        readme+="
-<td align=\"center\" bgcolor=\"#2b2b3d\"><img src=\"$file\" width=\"64\"><br><sub>$label</sub></td>"
-        col=$((col + 1))
     done
-    readme+="</tr></table>
+
+    # Flush remaining cells
+    if [[ $col -gt 0 ]]; then
+        while [[ $col -lt $cols ]]; do
+            current_row+=" |"
+            col=$((col + 1))
+        done
+        readme+="
+${current_row}"
+    fi
+
+    readme+="
 "
     return 0
 }
@@ -88,5 +121,5 @@ if [ "$has_images" = false ]; then
 fi
 
 printf '%s\n' "$readme" > README.md
-count=$(grep -c '<img' README.md 2>/dev/null || echo 0)
+count=$(grep -o '!\[' README.md 2>/dev/null | wc -l | tr -d ' ')
 echo "README.md generated ($count images)"
